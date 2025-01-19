@@ -14,7 +14,8 @@ int main() {
     std::cout << "\033[1;36m" << "NIDS Starting..." << "\033[0m" << std::endl; 
     std::string ruleFilePath = "rules/sample.rules";
     std::cout << "Loading rules from: " << ruleFilePath << std::endl;
-    
+    auto& processManager = ProcessManager::getInstance();
+    processManager.initialize();
     //Load the rules
     RuleEngine ruleEngine;
     if (!ruleEngine.loadRules(ruleFilePath)) {

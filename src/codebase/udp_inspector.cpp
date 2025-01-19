@@ -1,4 +1,5 @@
 #include "../headers/udp_inspector.h"
+#include "../headers/network_uploader.h"
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -79,6 +80,12 @@ bool UDPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *heade
     // Get source and destination ports
     unsigned short srcPort = ntohs(udpHeader->source);
     unsigned short dstPort = ntohs(udpHeader->dest);
+
+    char srcIp[INET_ADDRSTRLEN];
+    char dstIp[INET_ADDRSTRLEN];
+    
+    inet_ntop(AF_INET, &(ipHeader->saddr), srcIp, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &(ipHeader->daddr), dstIp, INET_ADDRSTRLEN);
     
     // Calculate UDP payload length
     unsigned short udpLength = ntohs(udpHeader->len);
@@ -109,6 +116,8 @@ bool UDPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *heade
         info << " Len=" << payloadLength;
     }
 
+
+
     // Print all details in one line
     std::cout << srcPort << "\t"
               << timestamp << "\t"
@@ -118,6 +127,32 @@ bool UDPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *heade
               << header->len << "\t"
               << info.str() << "\t"
               << std::endl;
+
+
+     PacketData packetData{
+        srcPort,
+       timestamp,  // implement this utility function
+       inet_ntoa(*(in_addr*)&ipHeader->saddr),
+        inet_ntoa(*(in_addr*)&ipHeader->daddr),
+        "UDP",
+       header->len,
+        info.str(),
+        "200 ok",
+    };
+
+    auto& uploader = NetworkUploader::getInstance();
+    
+    // Initialize once (maybe in your main.cpp)
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = uploader.initialize();
+        uploader.setServerDetails(L"nids-six.vercel.app", 443, L"/api/pusher");
+    }
+
+    // Upload packet data
+    if (!uploader.uploadPacketData(packetData.toJson())) {
+        // Handle error - maybe log it
+    }            
 
     return true;
 }

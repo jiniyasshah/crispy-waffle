@@ -21,6 +21,8 @@ set(SOURCES
     src/codebase/udp_inspector.cpp
     src/codebase/dns_inspector.cpp
     src/codebase/http_inspector.cpp
+    src/codebase/network_uploader.cpp
+    src/codebase/process_manager.cpp
     src/codebase/utils.cpp
 )
 

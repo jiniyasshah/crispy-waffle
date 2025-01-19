@@ -1,4 +1,5 @@
 #include "../headers/http_inspector.h"
+#include "../headers/network_uploader.h"
 #include "../headers/base64_encoder.h"
 #include <iostream>
 #include <cstring>
@@ -23,7 +24,25 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
     int ipHeaderLength = ipHeader->ihl * 4;
     const TCPHeader *tcpHeader = reinterpret_cast<const TCPHeader*>(packet + ETHERNET_HEADER_SIZE + ipHeaderLength);
     int tcpHeaderLength = tcpHeader->doff * 4;
+        // Get source and destination ports
+    unsigned short srcPort = ntohs(tcpHeader->source);
+    unsigned short dstPort = ntohs(tcpHeader->dest);
+    char srcIp[INET_ADDRSTRLEN];
+    char dstIp[INET_ADDRSTRLEN];
+    
+    inet_ntop(AF_INET, &(ipHeader->saddr), srcIp, INET_ADDRSTRLEN);
+    inet_ntop(AF_INET, &(ipHeader->daddr), dstIp, INET_ADDRSTRLEN);
 
+
+    auto& processManager = ProcessManager::getInstance();
+    DWORD pid = processManager.getProcessIdForConnection(srcIp, srcPort, dstIp, dstPort);
+    
+    // Get current process ID from the manager
+    DWORD currentPid = processManager.getCurrentProcessId();
+    
+    if (pid == currentPid || pid == 0) {
+        return true;
+    }
     // Calculate the TCP payload offset
     const u_char *payload = packet + ETHERNET_HEADER_SIZE + ipHeaderLength + tcpHeaderLength;
     unsigned int payloadLen = header->caplen - (ETHERNET_HEADER_SIZE + ipHeaderLength + tcpHeaderLength);
@@ -43,7 +62,7 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
 
             // Print all details in one line
  std::cout << (result.empty() ? "" : "\033[1;31m")  // Start red color if malicious
-          << ntohs(tcpHeader->source) << "\t"
+          << pid << "\t"
           << timestamp << "\t"
           << inet_ntoa(*(in_addr*)&ipHeader->saddr) << "\t"
           << inet_ntoa(*(in_addr*)&ipHeader->daddr) << "\t" 
@@ -53,6 +72,31 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
           << (!result.empty() ? "MALICIOUS: " + result : "")
           << (result.empty() ? "" : "\033[0m")  // Reset color if malicious
           << std::endl;
+
+       PacketData packetData{
+        srcPort,
+       timestamp,  // implement this utility function
+       inet_ntoa(*(in_addr*)&ipHeader->saddr),
+        inet_ntoa(*(in_addr*)&ipHeader->daddr),
+        "HTTP",
+       header->len,
+        httpRequestLine,
+        "200 ok",
+    };
+
+    auto& uploader = NetworkUploader::getInstance();
+    
+    // Initialize once (maybe in your main.cpp)
+    static bool initialized = false;
+    if (!initialized) {
+        initialized = uploader.initialize();
+        uploader.setServerDetails(L"nids-six.vercel.app", 443, L"/api/pusher");
+    }
+
+    // Upload packet data
+    if (!uploader.uploadPacketData(packetData.toJson())) {
+        // Handle error - maybe log it
+    }  
 
             return true; // Indicate that this is an HTTP packet
         }

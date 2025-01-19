@@ -4,6 +4,7 @@
 
 #include <string>
 #include "network_headers.h"
+#include "process_manager.h"
 #include "rule_engine.h"
 #include <pcap.h>
 
