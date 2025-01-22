@@ -151,10 +151,10 @@ bool DNSInspector::inspect(const u_char *packet, const struct pcap_pkthdr *heade
         uploader.setServerDetails(L"nids-six.vercel.app", 443, L"/api/pusher");
     }
 
-    // Upload packet data
-    if (!uploader.uploadPacketData(packetData.toJson())) {
-        // Handle error - maybe log it
-    }            
+    // // Upload packet data
+    // if (!uploader.uploadPacketData(packetData.toJson())) {
+    //     // Handle error - maybe log it
+    // }            
          
 
     return true;

@@ -1,5 +1,6 @@
 {
   "files.associations": {
+    ".env*": "dotenv",
     "iostream": "cpp",
     "ostream": "cpp",
     "algorithm": "cpp",
@@ -60,6 +61,7 @@
     "xstring": "cpp",
     "xtr1common": "cpp",
     "xtree": "cpp",
-    "xutility": "cpp"
+    "xutility": "cpp",
+    "csignal": "cpp"
   }
 }

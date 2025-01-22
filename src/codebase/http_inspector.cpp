@@ -40,7 +40,7 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
     // Get current process ID from the manager
     DWORD currentPid = processManager.getCurrentProcessId();
     
-    if (pid == currentPid || pid == 0) {
+    if (pid == currentPid) {
         return true;
     }
     // Calculate the TCP payload offset
@@ -52,6 +52,12 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
         std::string payloadStr(reinterpret_cast<const char*>(payload), payloadLen);
         if (payloadStr.find("HTTP/1.") != std::string::npos || payloadStr.find("GET ") == 0 || payloadStr.find("POST ") == 0) {
             std::string httpRequestLine = payloadStr.substr(0, payloadStr.find("\r\n"));
+
+
+        if ((payloadStr.find("pusher") != std::string::npos) || (payloadStr.find("nids") != std::string::npos)) {
+            return true;
+           }
+
             std::string encodedData = base64_encode(payloadStr);
 
             // Check if malicious after converting to string
@@ -59,9 +65,10 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
 
             // Get the current timestamp
             std::string timestamp = getCurrentTimestamp();
+            
 
             // Print all details in one line
- std::cout << (result.empty() ? "" : "\033[1;31m")  // Start red color if malicious
+        std::cout << (result.empty() ? "" : "\033[1;31m")  // Start red color if malicious
           << pid << "\t"
           << timestamp << "\t"
           << inet_ntoa(*(in_addr*)&ipHeader->saddr) << "\t"
@@ -80,8 +87,8 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
         inet_ntoa(*(in_addr*)&ipHeader->daddr),
         "HTTP",
        header->len,
-        httpRequestLine,
-        "200 ok",
+        encodedData,
+        result,
     };
 
     auto& uploader = NetworkUploader::getInstance();
@@ -94,6 +101,10 @@ bool HTTPInspector::inspect(const u_char *packet, const struct pcap_pkthdr *head
     }
 
     // Upload packet data
+      if(result.empty()){
+        return true;
+    }
+
     if (!uploader.uploadPacketData(packetData.toJson())) {
         // Handle error - maybe log it
     }  

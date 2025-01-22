@@ -3,6 +3,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 
 bool RuleEngine::loadRules(const std::string& filePath) {
     std::ifstream file(filePath);
@@ -127,12 +128,33 @@ void RuleEngine::parseOptions(const std::string& options, Rule& rule) {
     }
 }
 
+std::string urlDecode(const std::string &str) {
+    std::string decodedString;
+    char ch;
+    int i, ii;
+    for (i = 0; i < str.length(); i++) {
+        if (str[i] == '%') {
+            sscanf(str.substr(i + 1, 2).c_str(), "%x", &ii);
+            ch = static_cast<char>(ii);
+            decodedString += ch;
+            i = i + 2;
+        } else if (str[i] == '+') {
+            decodedString += ' ';
+        } else {
+            decodedString += str[i];
+        }
+    }
+    return decodedString;
+}
+
 std::string RuleEngine::match(const std::string& packetData) {
+    std::string decodedPacketData = urlDecode(packetData);
+
     for (const auto& rule : rules) {
         try {
             // Only try to match if the rule has a pattern
             if (!rule.pattern.empty() && 
-                std::regex_search(packetData, rule.regexPattern)) {
+                std::regex_search(decodedPacketData, rule.regexPattern)) {
                 // Return the msg from options if it exists
                 auto it = rule.options.find("msg");
                 if (it != rule.options.end()) {
